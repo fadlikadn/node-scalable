@@ -1,3 +1,4 @@
+# Chapter 2 : Modules and Toolkit
 ## Install dependencies
 install redis in windows, run `choco install redis-64`, run server with `redis-server`, run client with `redis-cli`
 install hydra command-line tools, run `sudo npm install -g yo generator-fwsp-hydra hydra-cli`
@@ -7,6 +8,10 @@ cd `hello-service/`
 run `npm install`
 run `npm start`
 open IP:PORT, and try open IP:PORT/v1/hello as stated in `hello-service.js`
+
+
+# Chapter 2 : Building Microservices to handle image processing use case
+
 
 
 ## Reference
