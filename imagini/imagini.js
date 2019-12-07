@@ -1,6 +1,9 @@
-const express = require("express");
-const sharp   = require("sharp");
-const app     = express();
+const express       = require("express");
+const sharp         = require("sharp");
+const app           = express();
+const bodyparser    = require('body-parser');
+const path          = require('path');
+const fs            = require('fs');
 
 app.get(/\/thumbnail\.(jpg|png)/, (req, res, next) => {
     let format    = (req.params[0] == "png" ? "png" : "jpeg");
@@ -58,6 +61,75 @@ app.get(/\/thumbnail\.(jpg|png)/, (req, res, next) => {
 
     image.overlayWith(thumbnail)[format]().pipe(res);
     // image.composite([{input: thumbnail, blend: 'dest-in' }])
+});
+
+// Uploading images
+app.post("/uploads/:image", bodyparser.raw({
+    limit: "10mb",
+    type: "image/*",
+}), (req, res) => {
+    let image = req.params.image.toLowerCase();
+
+    if (!image.match(/\.(png|jpg)$/)) {
+        return res.status(403).end();
+    }
+
+    let len = req.body.length;
+    let fd = fs.createWriteStream(path.join(__dirname, "uploads", image), {
+        flags: "w+",
+        encoding: "binary"
+    });
+
+    fd.write(req.body);
+    fd.end();
+
+    fd.on("close", () => {
+        res.send({ status: "ok", size: len });
+    });
+});
+
+// check whether an image exists
+app.head("/uploads/:image", (req, res) => {
+    fs.access(
+        path.join(__dirname, "uploads", req.params.image),
+        fs.constants.R_OK,
+        (err) => {
+            res.status(err ? 404 : 200);
+            res.end();
+        }
+    )
+});
+
+// Downloading images
+app.get("/uploads/:image", (req, res) => {
+    let ext = path.extname(req.params.image);
+
+    if (!ext.match(/^\.(png|jpg)$/)) {
+        return res.status(404).end();
+    }
+
+    let fd = fs.createReadStream(path.join(__dirname, "uploads", req.params.image));
+
+    fd.on("error", (e) => {
+        if (e.code == "ENOENT") {
+            // return res.status(404).end();
+            res.status(404);
+
+            if (req.accepts('html')) {
+                res.setHeader("Content-Type", "text/html");
+
+                res.write("<strong>Error:</strong> image not found");
+            }
+
+            return res.end();
+        }
+
+        res.status(500).end();
+    });
+
+    res.setHeader("Content-Type", "image/" + ext.substr(1));
+
+    fd.pipe(res);
 });
 
 app.listen(3000, () => {
