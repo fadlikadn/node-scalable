@@ -68,11 +68,12 @@ app.post("/uploads/:image", bodyparser.raw({
     limit: "10mb",
     type: "image/*",
 }), (req, res) => {
-    let image = req.params.image.toLowerCase();
+    /*let image = req.params.image.toLowerCase();
 
     if (!image.match(/\.(png|jpg)$/)) {
         return res.status(403).end();
     }
+    // validation handle by app.params("image")
 
     let len = req.body.length;
     let fd = fs.createWriteStream(path.join(__dirname, "uploads", image), {
@@ -85,24 +86,39 @@ app.post("/uploads/:image", bodyparser.raw({
 
     fd.on("close", () => {
         res.send({ status: "ok", size: len });
+    });*/
+
+    // optimized
+    let fd = fs.createWriteStream(req.localpath, {
+        flags: "w+",
+        encoding: "binary"
+    });
+
+    fd.end(req.body);
+
+    fd.on("close", () => {
+        res.send({ status: "ok", size: req.body.length });
     });
 });
 
 // check whether an image exists
 app.head("/uploads/:image", (req, res) => {
-    fs.access(
+    /*fs.access(
         path.join(__dirname, "uploads", req.params.image),
         fs.constants.R_OK,
         (err) => {
             res.status(err ? 404 : 200);
             res.end();
         }
-    )
+    )*/
+    fs.access(req.localpath, fs.constants.R_OK, (err) => {
+        res.status(err ? 404 : 200).end();
+    });
 });
 
 // Downloading images
 app.get("/uploads/:image", (req, res) => {
-    let ext = path.extname(req.params.image);
+    /*let ext = path.extname(req.params.image);
 
     if (!ext.match(/^\.(png|jpg)$/)) {
         return res.status(404).end();
@@ -129,7 +145,29 @@ app.get("/uploads/:image", (req, res) => {
 
     res.setHeader("Content-Type", "image/" + ext.substr(1));
 
+    fd.pipe(res);*/
+
+    // Improved
+    let fd = fs.createReadStream(req.localpath);
+
+    fd.on("error", (e) => {
+        res.status(e.code == "ENOENT" ? 404 : 500).end();
+    });
+
+    res.setHeader("Content-Type", "image/" + path.extname(req.image).substr(1));
+
     fd.pipe(res);
+});
+
+app.param("image", (req, res, next, image) => {
+    if (!image.match(/\.(png|jpg)$/i)) {
+        return res.status(req.method == "POST" ? 403 : 404).end();
+    }
+
+    req.image = image;
+    req.localpath = path.join(__dirname, "uploads", req.image);
+
+    return next();
 });
 
 app.listen(3000, () => {
