@@ -127,7 +127,7 @@ app.param("image", (req, res, next, image) => {
     return next();
 });
 
-app.param("width", (req, res, next, width) => {
+/*app.param("width", (req, res, next, width) => {
     req.width = +width;
 
     return next();
@@ -145,7 +145,7 @@ app.param("greyscale", (req, res, next, greyscale) => {
     req.greyscale = true;
 
     return next();
-});
+});*/
 
 /** 
  * Allow 3 different download scenarios :
@@ -169,9 +169,19 @@ function download_image(req, res) {
         if (err) return res.status(404).end();
 
         let image = sharp(req.localpath);
+        let width = +req.query.width;
+        let height = +req.query.height;
+        // let greyscale = (req.query.greyscale == "y");
+        let greyscale = ["y", "yes", "1", "on"].includes(req.query.greyscale);
+
+        let sharpen = +req.query.sharpen;
+        let blur = +req.query.blur;
+        let flip = ["y", "yes", "1", "on"].includes(req.query.flip);
+        let flop = ["y", "yes", "1", "on"].includes(req.query.flop);
 
         console.log(req.width, req.height);
-        if (req.width  && req.height) {
+        // using shorted_url
+        /*if (req.width && req.height) {
             image.resize({
                 fit: sharp.fit.fill,
             });
@@ -183,6 +193,37 @@ function download_image(req, res) {
 
         if (req.greyscale) {
             image.greyscale();
+        }*/
+
+        // using url with parameter ? and & in the end string
+        if (width > 0 && height > 0) {
+            image.resize({
+                fit: sharp.fit.fill,
+            });
+        }
+
+        if (width > 0 || height > 0) {
+            image.resize(width || null, height || null);
+        }
+
+        if (greyscale) {
+            image.greyscale();
+        }
+
+        if (flip) {
+            image.flip();
+        }
+
+        if (flop) {
+            image.flop();
+        }
+
+        if (blur > 0) {
+            image.blur(blur);
+        }
+
+        if (sharpen > 0) {
+            image.sharpen(sharpen);
         }
 
         res.setHeader("Content-Type", "image/" + path.extname(req.image).substr(1));
