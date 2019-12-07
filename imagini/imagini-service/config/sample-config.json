@@ -1,0 +1,15 @@
+{
+  "environment": "development",
+  "hydra": {
+    "serviceName": "imagini-service",
+    "serviceIP": "",
+    "servicePort": 0,
+    "serviceType": "imagini",
+    "serviceDescription": "learning hydra microservice",
+    "redis": {
+      "url": "127.0.0.1",
+      "port": 6379,
+      "db": 15
+    }
+  }
+}
