@@ -117,7 +117,7 @@ app.head("/uploads/:image", (req, res) => {
 });
 
 // Downloading images
-app.get("/uploads/:image", (req, res) => {
+// app.get("/uploads/:image", (req, res) => {
     /*let ext = path.extname(req.params.image);
 
     if (!ext.match(/^\.(png|jpg)$/)) {
@@ -148,7 +148,7 @@ app.get("/uploads/:image", (req, res) => {
     fd.pipe(res);*/
 
     // Improved
-    let fd = fs.createReadStream(req.localpath);
+    /*let fd = fs.createReadStream(req.localpath);
 
     fd.on("error", (e) => {
         res.status(e.code == "ENOENT" ? 404 : 500).end();
@@ -156,8 +156,8 @@ app.get("/uploads/:image", (req, res) => {
 
     res.setHeader("Content-Type", "image/" + path.extname(req.image).substr(1));
 
-    fd.pipe(res);
-});
+    fd.pipe(res);*/
+// });
 
 app.param("image", (req, res, next, image) => {
     if (!image.match(/\.(png|jpg)$/i)) {
@@ -169,6 +169,54 @@ app.param("image", (req, res, next, image) => {
 
     return next();
 });
+
+app.param("width", (req, res, next, width) => {
+    req.width = +width;
+
+    return next();
+});
+
+app.param("height", (req, res, next, height) => {
+    req.height = +height;
+
+    return next();
+});
+
+/** 
+ * Allow 3 different download scenarios :
+ * 
+ * - A particular fixed-size image
+ * - An aspect ratio resize by passing only width or height
+ * - A full-size image
+ * */ 
+app.get("/uploads/:width(\\d+)x:height(\\d+)-:image", download_image);
+app.get("/uploads/_x:height(\\d+)-:image", download_image);
+app.get("/uploads/:width(\\d+)x_-:image", download_image);
+// optimized
+app.get("/uploads/:image", download_image);
+
+function download_image(req, res) {
+    fs.access(req.localpath, fs.constants.R_OK, (err) => {
+        if (err) return res.status(404).end();
+
+        let image = sharp(req.localpath);
+
+        console.log(req.width, req.height);
+        if (req.width  && req.height) {
+            image.resize({
+                fit: sharp.fit.fill,
+            });
+        }
+
+        if (req.width || req.height) {
+            image.resize(req.width, req.height);
+        }
+
+        res.setHeader("Content-Type", "image/" + path.extname(req.image).substr(1));
+
+        image.pipe(res);
+    });
+}
 
 app.listen(3000, () => {
     console.log("ready");
